@@ -1,6 +1,7 @@
 # Copyright 2019 Alexandre Díaz <dev@redneboa.es>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 import base64
+import time
 from colorsys import hls_to_rgb, rgb_to_hls
 
 from odoo import api, fields, models
@@ -18,10 +19,17 @@ class ResCompany(models.Model):
 
     def _get_scss_template(self):
         return """
+        @media screen {
+          .o_main_navbar {
+            border-bottom: 0 !important;
+          }
+        }
+
         .o_main_navbar {
           background: %(color_navbar_bg)s !important;
           background-color: %(color_navbar_bg)s !important;
           color: %(color_navbar_text)s !important;
+          border-bottom: 0 !important;
 
           .show {
             .dropdown-toggle {
@@ -29,40 +37,55 @@ class ResCompany(models.Model):
             }
           }
 
+          /* Keep navbar links independent from global link colors */
+          a,
+          a[href],
+          a[tabindex],
+          .btn-link,
+          .o_external_button {
+            color: %(color_navbar_link_text)s !important;
+            &:hover, &:focus, &:active, &:focus:active {
+              color: %(color_navbar_link_text_hover)s !important;
+            }
+          }
+
           > ul {
             > li {
               > a, > label {
-                color: %(color_navbar_text)s !important;
+                color: %(color_navbar_link_text)s !important;
 
                 &:hover, &:focus, &:active, &:focus:active {
+                  color: %(color_navbar_link_text_hover)s !important;
                   background-color: %(color_navbar_bg_hover)s !important;
                 }
               }
             }
           }
-        }
-        .o_menu_brand {
-            color: %(color_navbar_text)s !important;
+
+          .o_menu_brand {
+            color: %(color_navbar_link_text)s !important;
             &:hover, &:focus, &:active, &:focus:active {
+              color: %(color_navbar_link_text_hover)s !important;
               background-color: %(color_navbar_bg_hover)s !important;
             }
           }
 
-          a[href],
-          a[tabindex],
-          .btn-link,
-          .o_external_button {
-            color: %(color_link_text)s;
-            .o_main_navbar {
-            color: none;
+          .dropdown-menu {
+            .dropdown-item {
+              color: %(color_submenu_text)s !important;
             }
           }
+        }
+
+        a[href],
+        a[tabindex],
+        .btn-link,
+        .o_external_button {
+          color: %(color_link_text)s;
+        }
         a:hover,
         .btn-link:hover {
           color: %(color_link_text_hover)s;
-          .o_main_navbar {
-            color: none;
-          }
         }
         .btn-primary:not(.disabled),
         .ui-autocomplete .ui-menu-item > a.ui-state-active {
@@ -102,7 +125,16 @@ class ResCompany(models.Model):
             --o-caret-color: %(color_button_bg)s !important;
           }
         }
-        .o_menu_sections .o_nav_entry {
+        .o_main_navbar .o_menu_sections .o_nav_entry {
+          background: %(color_navbar_bg)s !important;
+          background-color: %(color_navbar_bg)s !important;
+          color: %(color_navbar_link_text)s !important;
+          &:hover, &:focus, &:active, &:focus:active {
+            color: %(color_navbar_link_text_hover)s !important;
+            background-color: %(color_navbar_bg_hover)s !important;
+          }
+        }
+        .o_main_navbar .o_menu_sections .dropdown-toggle {
           background: %(color_navbar_bg)s !important;
           background-color: %(color_navbar_bg)s !important;
           color: %(color_navbar_text)s !important;
@@ -110,25 +142,14 @@ class ResCompany(models.Model):
             background-color: %(color_navbar_bg_hover)s !important;
           }
         }
-        .o_menu_sections .dropdown-toggle {
-          background: %(color_navbar_bg)s !important;
-          background-color: %(color_navbar_bg)s !important;
-          color: %(color_navbar_text)s !important;
-          &:hover, &:focus, &:active, &:focus:active {
-            background-color: %(color_navbar_bg_hover)s !important;
-          }
-        }
-        .o_menu_systray button,
-        .o_navbar_breadcrumbs,
+        .o_main_navbar .o_menu_systray button,
+        .o_main_navbar .o_navbar_breadcrumbs,
         .o_main_navbar button,
-        .o_menu_toggle {
+        .o_main_navbar .o_menu_toggle {
             color: %(color_navbar_text)s !important;
             &:hover, &:focus, &:active, &:focus:active {
                 background-color: %(color_navbar_bg_hover)s !important;
             }
-        }
-        .dropdown-item{
-            color: %(color_submenu_text)s !important;
         }
     """
 
@@ -138,6 +159,12 @@ class ResCompany(models.Model):
         "Navbar Background Color Hover", sparse="company_colors"
     )
     color_navbar_text = fields.Char("Navbar Text Color", sparse="company_colors")
+    color_navbar_link_text = fields.Char(
+        "Navbar Link Text Color", sparse="company_colors"
+    )
+    color_navbar_link_text_hover = fields.Char(
+        "Navbar Link Text Color Hover", sparse="company_colors"
+    )
     color_button_text = fields.Char("Button Text Color", sparse="company_colors")
     color_button_bg = fields.Char("Button Background Color", sparse="company_colors")
     color_button_bg_hover = fields.Char(
@@ -170,11 +197,14 @@ class ResCompany(models.Model):
                 "color_navbar_bg",
                 "color_navbar_bg_hover",
                 "color_navbar_text",
+                "color_navbar_link_text",
+                "color_navbar_link_text_hover",
                 "color_button_bg",
                 "color_button_bg_hover",
                 "color_button_text",
                 "color_link_text",
                 "color_link_text_hover",
+                "color_submenu_text",
             )
             result = super().write(values)
             if any([field in values for field in fields_to_check]):
@@ -206,6 +236,26 @@ class ResCompany(models.Model):
             )
         self.write(values)
 
+    def button_reset_colors(self):
+        """Clear all stored colors so Odoo falls back to its default styling."""
+        self.ensure_one()
+        self.write(
+            {
+                "color_navbar_bg": False,
+                "color_navbar_bg_hover": False,
+                "color_navbar_text": False,
+                "color_navbar_link_text": False,
+                "color_navbar_link_text_hover": False,
+                "color_button_bg": False,
+                "color_button_bg_hover": False,
+                "color_button_text": False,
+                "color_link_text": False,
+                "color_link_text_hover": False,
+                "color_submenu_text": False,
+            }
+        )
+        return True
+
     def _scss_get_sanitized_values(self):
         self.ensure_one()
         # Clone company_color as dictionary to avoid ORM operations
@@ -217,6 +267,17 @@ class ResCompany(models.Model):
                 "color_navbar_bg": (values.get("color_navbar_bg") or "$o-brand-odoo"),
                 "color_navbar_bg_hover": (values.get("color_navbar_bg_hover")),
                 "color_navbar_text": (values.get("color_navbar_text") or "#FFF"),
+                "color_navbar_link_text": (
+                    values.get("color_navbar_link_text")
+                    or values.get("color_navbar_text")
+                    or "#FFF"
+                ),
+                "color_navbar_link_text_hover": (
+                    values.get("color_navbar_link_text_hover")
+                    or values.get("color_navbar_link_text")
+                    or values.get("color_navbar_text")
+                    or "#FFF"
+                ),
                 "color_button_bg": values.get("color_button_bg") or "#71639e",
                 "color_button_bg_hover": values.get("color_button_bg_hover")
                 or "darken(#71639e, 10%)",
@@ -224,7 +285,7 @@ class ResCompany(models.Model):
                 "color_link_text": values.get("color_link_text") or "#71639e",
                 "color_link_text_hover": values.get("color_link_text_hover")
                 or "darken(#71639e, 10%)",
-                "color_submenu_text": values.get("color_link_text") or "#374151",
+                "color_submenu_text": values.get("color_submenu_text") or "#374151",
             }
         )
         return values
@@ -240,6 +301,18 @@ class ResCompany(models.Model):
         self.ensure_one()
         return URL_SCSS_GEN_TEMPLATE % self.id
 
+    def scss_get_asset_url(self):
+        """Return the URL used by the webclient to load company CSS.
+
+        A cache-busting query param makes a normal refresh enough after
+        changing/resetting company colors.
+        """
+        self.ensure_one()
+        url = self.scss_get_url()
+        if self.scss_modif_timestamp:
+            return f"{url}?t={self.scss_modif_timestamp}"
+        return url
+
     def scss_create_or_update_attachment(self):
         IrAttachmentObj = self.env["ir.attachment"]
         for record in self:
@@ -251,6 +324,10 @@ class ResCompany(models.Model):
             datas = base64.b64encode(compiled_CSS.encode("utf-8"))
             custom_attachment = IrAttachmentObj.sudo().search(
                 [("url", "=", custom_url), ("company_id", "=", record.id)]
+            )
+            # Cache-bust the URL. This also forces Odoo's own QWeb cache to refresh.
+            record.sudo().with_context(ignore_company_color=True).write(
+                {"scss_modif_timestamp": str(int(time.time()))}
             )
             values = {
                 "datas": datas,

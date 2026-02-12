@@ -92,6 +92,16 @@ msgid "Navbar Text Color"
 msgstr "Boja teksta navigacijske trake"
 
 #. module: web_company_color
+#: model:ir.model.fields,field_description:web_company_color.field_res_company__color_navbar_link_text
+msgid "Navbar Link Text Color"
+msgstr "Boja linkova navigacijske trake"
+
+#. module: web_company_color
+#: model:ir.model.fields,field_description:web_company_color.field_res_company__color_navbar_link_text_hover
+msgid "Navbar Link Text Color Hover"
+msgstr "Boja linkova navigacijske trake (hover)"
+
+#. module: web_company_color
 #: model:ir.model,name:web_company_color.model_ir_qweb
 msgid "Qweb"
 msgstr ""
@@ -104,7 +114,17 @@ msgstr "SCSS Modif. Vremenski žig"
 #. module: web_company_color
 #: model:ir.model.fields,field_description:web_company_color.field_res_company__color_submenu_text
 msgid "Submenu Text Color"
-msgstr ""
+msgstr "Boja teksta podizbornika"
+
+#. module: web_company_color
+#: model_terms:ir.ui.view,arch_db:web_company_color.view_company_form
+msgid "Reset colors"
+msgstr "Resetiraj boje"
+
+#. module: web_company_color
+#: model_terms:ir.ui.view,arch_db:web_company_color.view_company_form
+msgid "This will clear all company style colors. Continue?"
+msgstr "Ovo će obrisati sve boje stilova tvrtke. Nastaviti?"
 
 #~ msgid "Navbar Colors"
 #~ msgstr "Boje navigacijske trake"

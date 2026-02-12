@@ -79,6 +79,26 @@ class TestResCompany(common.TransactionCase):
             "Invalid Navbar Background Color",
         )
 
+    def test_reset_colors(self):
+        company_id = self.env["res.company"].search([], limit=1)
+        company_id.sudo().write(
+            {
+                "color_navbar_bg": "#DEAD00",
+                "color_navbar_link_text": "#ffffff",
+                "color_link_text": "#123456",
+            }
+        )
+        self.assertTrue(company_id.company_colors, "Expected company colors to be set")
+        company_id.button_reset_colors()
+        self.assertFalse(
+            company_id.company_colors, "Expected company colors to be cleared"
+        )
+        self.assertFalse(company_id.color_navbar_bg, "Expected navbar color to be reset")
+        self.assertFalse(
+            company_id.color_navbar_link_text, "Expected navbar link color to be reset"
+        )
+        self.assertFalse(company_id.color_link_text, "Expected link color to be reset")
+
     def test_compiled_scss(self):
         """The SCSS is compiled before being sent to the client."""
         # Arrange
