@@ -1,7 +1,6 @@
 # Copyright 2019 Alexandre Díaz <dev@redneboa.es>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 import base64
-import time
 from colorsys import hls_to_rgb, rgb_to_hls
 
 from odoo import api, fields, models
@@ -239,22 +238,10 @@ class ResCompany(models.Model):
     def button_reset_colors(self):
         """Clear all stored colors so Odoo falls back to its default styling."""
         self.ensure_one()
-        self.write(
-            {
-                "color_navbar_bg": False,
-                "color_navbar_bg_hover": False,
-                "color_navbar_text": False,
-                "color_navbar_link_text": False,
-                "color_navbar_link_text_hover": False,
-                "color_button_bg": False,
-                "color_button_bg_hover": False,
-                "color_button_text": False,
-                "color_link_text": False,
-                "color_link_text_hover": False,
-                "color_submenu_text": False,
-            }
-        )
-        return True
+        company = self.sudo().with_context(ignore_company_color=True)
+        company.write({"company_colors": False})
+        company.scss_create_or_update_attachment()
+        return {"type": "ir.actions.client", "tag": "reload"}
 
     def _scss_get_sanitized_values(self):
         self.ensure_one()
@@ -301,33 +288,22 @@ class ResCompany(models.Model):
         self.ensure_one()
         return URL_SCSS_GEN_TEMPLATE % self.id
 
-    def scss_get_asset_url(self):
-        """Return the URL used by the webclient to load company CSS.
-
-        A cache-busting query param makes a normal refresh enough after
-        changing/resetting company colors.
-        """
-        self.ensure_one()
-        url = self.scss_get_url()
-        if self.scss_modif_timestamp:
-            return f"{url}?t={self.scss_modif_timestamp}"
-        return url
-
     def scss_create_or_update_attachment(self):
         IrAttachmentObj = self.env["ir.attachment"]
         for record in self:
             custom_url = record.scss_get_url()
-            SCSS_asset = ScssStylesheetAsset(
-                "web_company_color.company_color_assets", url=custom_url
-            )
-            compiled_CSS = SCSS_asset.compile(record._scss_generate_content())
-            datas = base64.b64encode(compiled_CSS.encode("utf-8"))
+            # If there are no company colors, store an empty stylesheet to
+            # effectively restore default styling without relying on cache busting.
+            if not record.company_colors:
+                compiled_css = ""
+            else:
+                SCSS_asset = ScssStylesheetAsset(
+                    "web_company_color.company_color_assets", url=custom_url
+                )
+                compiled_css = SCSS_asset.compile(record._scss_generate_content())
+            datas = base64.b64encode(compiled_css.encode("utf-8"))
             custom_attachment = IrAttachmentObj.sudo().search(
                 [("url", "=", custom_url), ("company_id", "=", record.id)]
-            )
-            # Cache-bust the URL. This also forces Odoo's own QWeb cache to refresh.
-            record.sudo().with_context(ignore_company_color=True).write(
-                {"scss_modif_timestamp": str(int(time.time()))}
             )
             values = {
                 "datas": datas,

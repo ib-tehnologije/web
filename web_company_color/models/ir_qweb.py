@@ -79,7 +79,22 @@ class QWeb(models.AbstractModel):
             lazy_load=lazy_load,
             media=media,
         )
-        for tag, attributes in res:
+        if isinstance(res, list):
+            # In some edge cases (eg. asset resolution failures) Odoo may return
+            # placeholder entries. Remove them to avoid breaking rendering.
+            res = [n for n in res if n is not None]
+        # Odoo may return nodes of different shapes (or placeholders) depending
+        # on asset resolution. Be defensive to avoid breaking the whole webclient.
+        for node in res or []:
+            if (
+                not node
+                or not isinstance(node, (list, tuple))
+                or len(node) < 2
+                or not isinstance(node[0], str)
+                or not isinstance(node[1], dict)
+            ):
+                continue
+            tag, attributes = node[0], node[1]
             if tag == "link" and attributes.get("href", "").startswith(
                 "/web_company_color/static/src/scss/custom_colors."
             ):

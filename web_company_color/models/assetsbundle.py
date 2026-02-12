@@ -17,4 +17,4 @@ class AssetsBundleCompanyColor(AssetsBundle):
         company_id = (
             self.env["res.company"].browse(active_company_id) or self.env.company
         )
-        return company_id.scss_get_asset_url()
+        return company_id.scss_get_url()
